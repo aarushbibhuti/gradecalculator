@@ -19,57 +19,28 @@ class Assignment {
         this.id = crypto.randomUUID();
     }
 
-    get month() {
-        return this._month;
-    }
-    set month(newMonth) {
-        this._month = newMonth;
-    }
+    get month() { return this._month; }
+    set month(newMonth) { this._month = newMonth; }
 
-    get day() {
-        return this._day;
-    }
-    set day(newDay) {
-        this._day = newDay;
-    }
+    get day() { return this._day; }
+    set day(newDay) { this._day = newDay; }
 
-    get year() {
-        return this._year;
-    }
-    set year(newYear) {
-        this._year = newYear;
-    }
+    get year() { return this._year; }
+    set year(newYear) { this._year = newYear; }
 
-    get name() {
-        return this._name;
-    }
-    set name(newName) {
-        this._name = newName;
-    }
+    get name() { return this._name; }
+    set name(newName) { this._name = newName; }
 
-    get type() {
-        return this._type;
-    }
-    set type(newType) {
-        this._type = newType;
-    }
+    get type() { return this._type; }
+    set type(newType) { this._type = newType; }
 
-    get points() {
-        return this._points;
-    }
-    set points(newPoints) {
-        this._points = newPoints;
-    }
+    get points() { return this._points; }
+    set points(newPoints) { this._points = newPoints; }
 
-    get maxPoints() {
-        return this._maxPoints;
-    }
-    set maxPoints(newMaxPoints) {
-        this._maxPoints = newMaxPoints;
-    }
+    get maxPoints() { return this._maxPoints; }
+    set maxPoints(newMaxPoints) { this._maxPoints = newMaxPoints; }
 
     get grade() {
-
         if (this._points === -1) {
             return "N/A";
         }
@@ -117,7 +88,6 @@ function parseAssign() {
     const rawText = textBox.value;
     const lines = rawText.split("\n");
     console.log(lines); //for debugging
-
 
     for (let i = 0; i < lines.length; i += 5) {
         // get the date in mm/dd/yyyy
@@ -190,6 +160,21 @@ function parseAssign() {
 
 }
 
+function pad2(n) {
+    return n.toString().padStart(2, '0');
+}
+
+function toInputDate(month, day, yy) {
+    // assumes years 2000-2099; adjust if needed
+    const fullYear = 2000 + (Number(yy) % 100);
+    return `${fullYear}-${pad2(month)}-${pad2(day)}`;
+}
+
+function fromInputDate(iso) {
+    const [yyyy, mm, dd] = iso.split('-');
+    return { month: mm, day: dd, yy: (Number(yyyy) % 100) };
+}
+
 function displayAssignments(assignments) {
     const tableBody = document.getElementById("assignmentsTableBody");
     tableBody.innerHTML = ""; // clear the preexisting values
@@ -207,32 +192,37 @@ function displayAssignments(assignments) {
 
         // make a cell for the month, day, and year
         const dateCell = document.createElement("td");
-        dateCell.textContent = assignment.month + "/" + assignment.day + "/" + assignment.year;
-        dateCell.className = "py-3 pr-4";
+        dateCell.textContent = `${pad2(assignment.month)}/${pad2(assignment.day)}/${pad2(assignment.year)}`;
+        dateCell.className = "py-3 pr-4 cursor-pointer";
+        makeEditableDateCell(dateCell, assignment);
         row.appendChild(dateCell);
 
         // name row
         const nameCell = document.createElement("td");
         nameCell.textContent = assignment.name;
-        nameCell.className = "py-3 pr-4";
+        nameCell.className = "py-3 pr-4 cursor-pointer";
+        makeEditableTextCell(nameCell, assignment, "name");
         row.appendChild(nameCell);
 
         // type row
         const typeCell = document.createElement("td");
         typeCell.textContent = assignment.type;
-        typeCell.className = "py-3 pr-4";
+        typeCell.className = "py-3 pr-4 cursor-pointer";
+        makeEditableTypeCell(typeCell, assignment);
         row.appendChild(typeCell);
 
         // points row
         const pointsCell = document.createElement("td");
         pointsCell.textContent = (assignment.points === -1) ? "Ungraded" : assignment.points; // goofy ahh if else
-        pointsCell.className = "py-3 pr-4 text-right";
+        pointsCell.className = "py-3 pr-4 text-right cursor-pointer";
+        makeEditablePointsCell(pointsCell, assignment);
         row.appendChild(pointsCell);
 
         // max points row
         const maxPointsCell = document.createElement("td");
         maxPointsCell.textContent = assignment.maxPoints;
-        maxPointsCell.className = "py-3 pr-4 text-right";
+        maxPointsCell.className = "py-3 pr-4 text-right cursor-pointer";
+        makeEditableNumberCell(maxPointsCell, assignment, "maxPoints");
         row.appendChild(maxPointsCell);
 
         // letter grade row
@@ -241,7 +231,7 @@ function displayAssignments(assignments) {
         letterCell.className = "py-3 pr-4";
         row.appendChild(letterCell);
 
-        // delete and eventually edit button
+        // delete button only
         const actionsCell = document.createElement("td");
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "Delete";
@@ -250,11 +240,10 @@ function displayAssignments(assignments) {
             const assignmentId = row.dataset.id;
             allAssignments = allAssignments.filter(assignment => assignment.id !== assignmentId);
             displayAssignments(allAssignments);
-            
         })
-
         actionsCell.appendChild(deleteBtn);
         row.appendChild(actionsCell);
+
         // add the finished row to the table
         tableBody.appendChild(row);
     });
@@ -270,6 +259,223 @@ function displayAssignments(assignments) {
         // call the thing to display
 
 }
+
+/* =========================
+   Inline editing helpers
+   ========================= */
+
+function commitAndRedraw() {
+    displayAssignments(allAssignments);
+}
+
+// plain text field (e.g., name)
+function makeEditableTextCell(td, assignment, field) {
+    td.addEventListener("click", () => {
+        if (td.dataset.editing === "1") return;
+        td.dataset.editing = "1";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = assignment[field] ?? "";
+        input.className = "w-full border border-slate-300 rounded px-2 py-1";
+        td.innerHTML = "";
+        td.appendChild(input);
+        input.focus();
+        input.select();
+
+        const save = () => {
+            const val = input.value.trim();
+            if (val.length > 0) assignment[field] = val;
+            td.dataset.editing = "0";
+            commitAndRedraw();
+        };
+        const cancel = () => { td.dataset.editing = "0"; commitAndRedraw(); };
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") save();
+            else if (e.key === "Escape") cancel();
+        });
+        input.addEventListener("blur", save);
+    });
+}
+
+// select field (type)
+function makeEditableTypeCell(td, assignment) {
+    td.addEventListener("click", () => {
+        if (td.dataset.editing === "1") return;
+        td.dataset.editing = "1";
+
+        const select = document.createElement("select");
+        select.className = "w-full border border-slate-300 rounded px-2 py-1";
+        [
+            "Major Summative",
+            "Minor Summative",
+            "Graded Formative",
+            "Diagnostic Formative"
+        ].forEach(opt => {
+            const o = document.createElement("option");
+            o.value = opt;
+            o.textContent = opt;
+            if (assignment.type === opt) o.selected = true;
+            select.appendChild(o);
+        });
+
+        td.innerHTML = "";
+        td.appendChild(select);
+        select.focus();
+
+        const save = () => {
+            assignment.type = select.value;
+            td.dataset.editing = "0";
+            commitAndRedraw();
+        };
+        const cancel = () => { td.dataset.editing = "0"; commitAndRedraw(); };
+
+        select.addEventListener("change", save);
+        select.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") save();
+            else if (e.key === "Escape") cancel();
+        });
+        select.addEventListener("blur", save);
+    });
+}
+
+// date cell (input[type=date])
+function makeEditableDateCell(td, assignment) {
+    td.addEventListener("click", () => {
+        if (td.dataset.editing === "1") return;
+        td.dataset.editing = "1";
+
+        const input = document.createElement("input");
+        input.type = "date";
+        input.value = toInputDate(assignment.month, assignment.day, assignment.year);
+        input.className = "border border-slate-300 rounded px-2 py-1";
+        td.innerHTML = "";
+        td.appendChild(input);
+        input.focus();
+
+        const save = () => {
+            if (!input.value) { td.dataset.editing = "0"; commitAndRedraw(); return; }
+            const { month, day, yy } = fromInputDate(input.value);
+            assignment.month = month;
+            assignment.day = day;
+            assignment.year = yy;
+            td.dataset.editing = "0";
+            commitAndRedraw();
+        };
+        const cancel = () => { td.dataset.editing = "0"; commitAndRedraw(); };
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") save();
+            else if (e.key === "Escape") cancel();
+        });
+        input.addEventListener("blur", save);
+    });
+}
+
+// numeric field (maxPoints)
+function makeEditableNumberCell(td, assignment, field) {
+    td.addEventListener("click", () => {
+        if (td.dataset.editing === "1") return;
+        td.dataset.editing = "1";
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = "any";
+        input.value = assignment[field] ?? "";
+        input.className = "w-full border border-slate-300 rounded px-2 py-1 text-right";
+        td.innerHTML = "";
+        td.appendChild(input);
+        input.focus();
+        input.select();
+
+        const save = () => {
+            const v = parseFloat(input.value);
+            if (!Number.isNaN(v)) assignment[field] = v;
+            td.dataset.editing = "0";
+            commitAndRedraw();
+        };
+        const cancel = () => { td.dataset.editing = "0"; commitAndRedraw(); };
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") save();
+            else if (e.key === "Escape") cancel();
+        });
+        input.addEventListener("blur", save);
+    });
+}
+
+// points field with inline "Ungraded" toggle
+function makeEditablePointsCell(td, assignment) {
+    td.addEventListener("click", () => {
+        if (td.dataset.editing === "1") return;
+        td.dataset.editing = "1";
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "flex items-center justify-end gap-2";
+
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = "any";
+        input.className = "w-24 border border-slate-300 rounded px-2 py-1 text-right";
+        input.value = assignment.points === -1 ? "" : assignment.points;
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.title = "Ungraded";
+        checkbox.className = "h-4 w-4";
+        checkbox.checked = assignment.points === -1;
+
+        input.disabled = checkbox.checked;
+
+        checkbox.addEventListener("change", () => {
+            input.disabled = checkbox.checked;
+            if (checkbox.checked) input.value = "";
+            input.focus();
+        });
+
+        td.innerHTML = "";
+        wrapper.appendChild(input);
+        wrapper.appendChild(checkbox);
+        td.appendChild(wrapper);
+
+        input.focus();
+        if (!checkbox.checked) input.select();
+
+        const save = () => {
+            if (checkbox.checked) {
+                assignment.points = -1;
+            } else {
+                const v = parseFloat(input.value);
+                if (!Number.isNaN(v)) assignment.points = v;
+            }
+            td.dataset.editing = "0";
+            commitAndRedraw();
+        };
+        const cancel = () => { td.dataset.editing = "0"; commitAndRedraw(); };
+
+        // Save when both controls lose focus
+        let blurTimer;
+        const onBlur = () => {
+            clearTimeout(blurTimer);
+            blurTimer = setTimeout(() => {
+                if (!td.contains(document.activeElement)) save();
+            }, 0);
+        };
+
+        input.addEventListener("blur", onBlur);
+        checkbox.addEventListener("blur", onBlur);
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") save();
+            else if (e.key === "Escape") cancel();
+        });
+    });
+}
+
+/* =========================
+   Grade calculation
+   ========================= */
 
 function gradeCalculator(list) {
     let majorPoints = 0;
@@ -316,31 +522,28 @@ function gradeCalculator(list) {
         totalWeight += formativeWeight;
     }
 
-
     // dont divide by 0
     if (totalWeight === 0) {
         return "N/A";
-    }
-
-    else {
+    } else {
         // normalize the weights
         const majorWeightNormalized = (majorMaxPoints > 0) ? majorWeight / totalWeight : 0;
         const minorWeightNormalized = (minorMaxPoints > 0) ? minorWeight / totalWeight : 0;
         const formativeWeightNormalized = (formativeMaxPoints > 0) ? formativeWeight / totalWeight : 0;
 
-        // NOW do the grade distribution bro
+        // compute category contributions
         const majorGrade = (majorMaxPoints > 0) ? (majorPoints / majorMaxPoints) * majorWeightNormalized : 0;
         const minorGrade = (minorMaxPoints > 0) ? (minorPoints / minorMaxPoints) * minorWeightNormalized : 0;
         const formativeGrade = (formativeMaxPoints > 0) ? (formativePoints / formativeMaxPoints) * formativeWeightNormalized : 0;
 
         const finalGrade = (majorGrade + minorGrade + formativeGrade) * 100;
-
-
         return finalGrade;
     }
-
-
 }
+
+/* =========================
+   Add / Reset
+   ========================= */
 
 function addNewAssignment() {
     // get the value from the input boxes
@@ -390,6 +593,9 @@ function resetApp() {
     document.getElementById("finalGrade").textContent = "--%";
 }
 
+/* =========================
+   Boot + “How to use” modal
+   ========================= */
 
 // ts page needs to load
 document.addEventListener("DOMContentLoaded", () => {
@@ -404,7 +610,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const addBtn = document.getElementById("addAssignmentBtn");
     addBtn.addEventListener("click", addNewAssignment);
 });
-
 
 const openModalBtn = document.getElementById('openModalBtn');
 const closeModalBtn = document.getElementById('closeModalBtn');
