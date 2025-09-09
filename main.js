@@ -105,7 +105,7 @@ class Assignment {
             }
         }
 
-        return "N/A"; // Return a non-numeric value for cases with no points
+        return "N/A"; // if no points
     }
 }
 
@@ -229,12 +229,21 @@ function displayAssignments(assignments) {
         pointsCell.className = "py-3 pr-4 text-right";
         row.appendChild(pointsCell);
 
+        editCell(pointsCell, assignment, "points", () => { // so practically this passes in a function for the third parameter
+            letterCell.textContent = assignment.grade; // so this auto runs at the end
+            gradeUpdater();
+        });
+
         // max points row
         const maxPointsCell = document.createElement("td");
         maxPointsCell.textContent = assignment.maxPoints;
         maxPointsCell.className = "py-3 pr-4 text-right";
         row.appendChild(maxPointsCell);
 
+        editCell(maxPointsCell, assignment, "maxPoints", () => { // same thing but for maxpoints
+            letterCell.textContent = assignment.grade; 
+            gradeUpdater();
+        });
         // letter grade row
         const letterCell = document.createElement("td");
         letterCell.textContent = assignment.grade;
@@ -258,15 +267,7 @@ function displayAssignments(assignments) {
         // add the finished row to the table
         tableBody.appendChild(row);
     });
-    const finalPercent = gradeCalculator(allAssignments);
-    const finalGradeDisplay = document.getElementById("finalGrade");
-
-    if (typeof finalPercent === 'number') {
-        finalGradeDisplay.textContent = `${finalPercent.toFixed(2)}%`;
-    } 
-    else {
-        finalGradeDisplay.textContent = finalPercent; // This will display "N/A"
-    }
+    gradeUpdater();
         // call the thing to display
 
 }
@@ -334,12 +335,41 @@ function gradeCalculator(list) {
         const formativeGrade = (formativeMaxPoints > 0) ? (formativePoints / formativeMaxPoints) * formativeWeightNormalized : 0;
 
         const finalGrade = (majorGrade + minorGrade + formativeGrade) * 100;
-
-
+        // ts geniuenly took thinking on my end bro honestly this is why llms exist
         return finalGrade;
     }
 
 
+}
+
+function gradeUpdater() { // updates the % on the website instead having to retype this bs 24/7
+    const finalPercent = gradeCalculator(allAssignments);
+    const finalGradeDisplay = document.getElementById("finalGrade");
+    if (typeof finalPercent === "number") {
+        finalGradeDisplay.textContent = `${finalPercent.toFixed(2)}%`;
+    } else {
+        finalGradeDisplay.textContent = finalPercent; // e.g., "N/A"
+    }
+}
+
+function editCell(cell, assignment, property, update) { // allows table to be edited
+    cell.contentEditable = true; // allows user to change text directly
+
+    cell.addEventListener("keydown", (e) => { // prevents enter
+        if (e.key === "Enter" || e.key === "-") {
+            e.preventDefault();
+        }
+    });
+
+    cell.addEventListener("input", () => { // runs when input
+        const newValue = cell.textContent.trim(); // trim spaces
+        if (newValue === "" || isNaN(newValue)) { //m makes sure its a valid number
+            assignment[property] = -1; // this seems weird but this is another way to access variables attached to a method
+        } else {
+            assignment[property] = parseFloat(newValue);
+        }
+        update();
+    });
 }
 
 function addNewAssignment() {
