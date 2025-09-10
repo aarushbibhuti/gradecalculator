@@ -226,7 +226,7 @@ function displayAssignments(assignments) {
         // points row
         const pointsCell = document.createElement("td");
         pointsCell.textContent = (assignment.points === -1) ? "Ungraded" : assignment.points; // goofy ahh if else
-        pointsCell.className = "py-3 pr-4 text-right";
+        pointsCell.className = "py-3 pr-4 text-right hover:bg-gray-300 transition";
         row.appendChild(pointsCell);
 
         editCell(pointsCell, assignment, "points", () => { // so practically this passes in a function for the third parameter
@@ -237,7 +237,7 @@ function displayAssignments(assignments) {
         // max points row
         const maxPointsCell = document.createElement("td");
         maxPointsCell.textContent = assignment.maxPoints;
-        maxPointsCell.className = "py-3 pr-4 text-right";
+        maxPointsCell.className = "py-3 pr-4 text-right hover:bg-gray-300 transition";
         row.appendChild(maxPointsCell);
 
         editCell(maxPointsCell, assignment, "maxPoints", () => { // same thing but for maxpoints
